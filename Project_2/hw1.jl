@@ -1,5 +1,7 @@
 using DelimitedFiles
 using LinearAlgebra
+using Plots
+using LaTeXStrings
 
 (R, num_vert_) = readdlm("Project_2/kn57Nodes1to57_dist.txt", Float64, header=true);
 num_vert = parse(Float64, num_vert_[1])
@@ -20,6 +22,8 @@ function G(n::Real, S::Matrix, rho::Real)::Matrix
     @assert issymmetric(r)
     return r
 end
-gmatrix = G(num_vert, S, rho)
+gm = G(num_vert, S, rho)
+ev = eigen(gm).values
+scatter(ev, labels="Eigenvalues")
 
 
