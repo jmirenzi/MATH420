@@ -25,5 +25,6 @@ end
 gm = G(num_vert, S, rho)
 ev = eigen(gm).values
 scatter(ev, labels="Eigenvalues")
+print("The 10 largest eigenvalues are $(last(sort(ev), 10))")
 
 
