@@ -1,6 +1,7 @@
 
 using Pkg
 Pkg.activate("p2")
+Pkg.instantiate()
 using DelimitedFiles
 using LinearAlgebra
 using Plots
