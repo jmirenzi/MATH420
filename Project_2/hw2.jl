@@ -9,6 +9,7 @@ using LaTeXStrings
 using JuMP
 using Convex
 using SCS
+using GLPK
 
 
 (R, (nv, m)) = readdlm("Project_2/sparse/Sparse1kn57Nodes1to57_exactdist.txt", Float64, header=true)
@@ -46,12 +47,18 @@ d, k1 = create_matrix_r(R)
 f1(A::Matrix{<:Real}, B::Matrix{<:Real})::Real = tr(A'B)
 f1(A::Matrix{<:Real}, B::Variable) = tr(A'B)
 
+f2(A::Vector{<:Real}, B::Matrix{<:Real})::Real = (A' * B * A)
+f2(A::Vector{<:Real}, B::Variable) = (A' * B * A)
+
 G = Variable(57, 57)
 add_constraint!(G, G ≥ 0)
+add_constraint!(G, G == G')
 add_constraint!(G, G * ones(57) == 0)
 problem = minimize(tr(G))
-er1 = 0.001
-c1 = [abs(f1(matrixm(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
+er1 = 1
+# c1 = [abs(f1(matrixm(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
+c1 = [abs(f2(evector(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
 problem.constraints += c1
 
 solve!(problem, SCS.Optimizer)
+# solve!(problem, GLPK.Optimizer)
