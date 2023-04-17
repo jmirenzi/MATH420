@@ -14,10 +14,12 @@ for name = ("dist", "exactdist")
     #     rho += S[i, j]
     # end
     S = R .^ 2
-    rho = norm(S, 1)
-    rho \= (2 * num_vert)
+
     one_col = ones(57, 1)
-    v = (S - rho * I) * one_col / num_vert
+    rho = 1 / (2num_vert) * one_col' * S * one_col
+    rho = rho[1]
+
+    v = ((S - rho * I(57)) * one_col) / num_vert
     function getGram(n::Real, S::Matrix, rho::Real)::Matrix
         r = 1 / 2n * (S - rho * I) * one_col * one_col' + 1 / 2n * one_col * one_col' * (S - rho * I) - 1 / 2 * S
         @assert issymmetric(r)
