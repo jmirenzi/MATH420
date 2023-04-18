@@ -56,8 +56,8 @@ add_constraint!(G, G == G')
 add_constraint!(G, G * ones(57) == 0)
 problem = minimize(tr(G))
 er1 = 1
-# c1 = [abs(f1(matrixm(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
-c1 = [abs(f2(evector(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
+c1 = [abs(f1(matrixm(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
+# c1 = [abs(f2(evector(57, trunc(Int, i[1]), trunc(Int, i[2])), G) - d[trunc(Int, i[1]), trunc(Int, i[2])]^2) ≤ er1 for i in k1]
 problem.constraints += c1
 
 solve!(problem, SCS.Optimizer)

@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "b0cdd7fc24342e15bc7f8987de2a363259469d24"
+project_hash = "ca7a5795322d054f77e720c4519e72ae44e4f0df"
 
 [[deps.AMD]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays", "Test"]
@@ -41,6 +41,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+0"
+
+[[deps.CSDP]]
+deps = ["CSDP_jll", "LinearAlgebra", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "51b3e3f9da11db1bae9921253edc97ef73b61a43"
+uuid = "0a46da34-8e4b-519e-b418-48813639ff34"
+version = "1.1.1"
+
+[[deps.CSDP_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS32_jll", "Pkg"]
+git-tree-sha1 = "838b5a1c95bbbffc7b0c58b08ab0d6d712c3ea12"
+uuid = "9ce75daa-2788-5e2c-ba1d-cf8c48367b27"
+version = "600.200.1+0"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
