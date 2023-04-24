@@ -73,4 +73,8 @@ function compute_qaz(x::Matrix{Float64}, y::Matrix{Float64})::Tuple{Matrix{Float
     return (Q, a, z)
 end
 
+function compute_alignment_error(x::T, y::T, Q::T, a::Float64, z::Vector{Float64})::Float64 where {T<:Matrix{Float64}}
+    m = a * Q * (x - z * ones(size(x)[2])') - y
+    return norm(m)
+end
 
