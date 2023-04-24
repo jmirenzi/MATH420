@@ -3,7 +3,11 @@ using LinearAlgebra
 
 using Pkg
 Pkg.activate("p2")
-Pkg.add("GLMakie")
+# using CairoMakie
+# using GLMakie
+# GLMakie.activate!()
+# CairoMakie.activate!("png")
+using Plots
 using DelimitedFiles
 
 files = readdir("Project_2/kn57Nodes1to57_coord/")
@@ -103,9 +107,34 @@ end
 
 xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(3)')
 xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1) = xt(t, X, tp[1], tp[2], tp[3]; i=i)
+xt(t::Float64, X::Matrix{Float64}; i::Int=1) = xt(t, X, compute_qaz(X, target); i=i)
 
 x = sources[2]
 y = target
 (Q, a, z) = compute_qaz(x, y)
-xt(1 / 100, x, compute_qaz(x, y))
+x1 = xt(1 / 100, x, compute_qaz(x, y))
 
+sort(collect(eachrow(x1)))
+
+x1
+
+scene = Scene()
+Plots.scatter(x1[:, 1], x1[:, 2], x1[:, 3])
+plt = plot3d(
+    1,
+    xlim=(extrema(x1[:, 1])),
+    ylim=(extrema(x1[:, 2])),
+    zlim=(extrema(x1[:, 3])),
+)
+plt = plot3d(
+    1,
+    xlim=(extrema(x[:, 1])),
+    ylim=(extrema(x[:, 2])),
+    zlim=(extrema(x[:, 3])),
+    legend=true,
+    marker=2
+)
+@gif for i = 0:100
+    x_ = xt(i / 100, x)
+    push!(plt, x_[:, 1], x_[:, 2], x_[:, 3])
+end every 1
