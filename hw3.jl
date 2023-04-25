@@ -9,6 +9,9 @@ Pkg.activate("p2")
 # CairoMakie.activate!("png")
 using Plots
 using DelimitedFiles
+using LaTeXStrings
+using Polynomials
+using EasyFit
 
 files = readdir("Project_2/kn57Nodes1to57_coord/")
 files = joinpath.("Project_2/kn57Nodes1to57_coord/", files)
@@ -74,16 +77,21 @@ function compute_qaz(x::Matrix{Float64}, y::Matrix{Float64})::Tuple{Matrix{Float
     ȳ = compute_center(y)
     X̃ = recenter(x, x̄)
     Ỹ = recenter(y, ȳ)
-    u, s, vt = compute_svd(compute_r(X̃, Ỹ))
+    u, s, vt = compute_svd(compute_r(X̃, Ỹ, center=false))
     Q = vt' * u'
     a = tr(s) / (norm(recenter(X̃)))^2
     z = x̄ - 1 / a * Q' * ȳ
     return (Q, a, z)
 end
 
+
 function compute_alignment_error(x::T, y::T, Q::T, a::Float64, z::Vector{Float64})::Float64 where {T<:Matrix{Float64}}
     m = a * Q * (x - z * ones(size(x)[2])') - y
     return norm(m)
+end
+function compute_alignment_error(x::Matrix{Float64}, y::Matrix{Float64})::Float64
+    Q, a, z = compute_qaz(x, y)
+    return compute_alignment_error(x, y, Q, a, z)
 end
 
 zt(t::Float64, z::Vector{Float64})::Vector{Float64} = t * z
@@ -109,32 +117,61 @@ xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Flo
 xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1) = xt(t, X, tp[1], tp[2], tp[3]; i=i)
 xt(t::Float64, X::Matrix{Float64}; i::Int=1) = xt(t, X, compute_qaz(X, target); i=i)
 
-x = sources[2]
+function make_gif(x::Matrix{Float64}, s::Int)
+    x_min::Matrix{Real} = ones(100, 3)
+    x_max::Matrix{Real} = ones(100, 3)
+
+    for i in 1:100
+        x_ = xt(i / 100, x, compute_qaz(x, y))
+        for k in 1:3
+            x_min[i, k] = minimum(x_[:, k])
+            x_max[i, k] = maximum(x_[:, k])
+        end
+    end
+    up_bounds = maximum.(eachcol(x_max))
+    low_bounds = minimum.(eachcol(x_min))
+
+    @gif for i in 1:100
+        x_ = xt(i / 100, x, compute_qaz(x, y))
+        # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
+        Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
+        Plots.scatter!(y[:, 1], y[:, 2], y[:, 3], markercolor=:red)
+        if s == 0
+            title!(L"X(t), t = %$(i/100)" * "\n" * "No Noisy Source")
+        else
+            title!(L"X(t), t = %$(i/100)" * "\n" * "Noisy Source Level $(s)")
+        end
+    end fps = 10
+end
+
 y = target
-(Q, a, z) = compute_qaz(x, y)
-x1 = xt(1 / 100, x, compute_qaz(x, y))
+for (i, x) in enumerate(sources)
+    (Q, a, z) = compute_qaz(x, y)
+    make_gif(x, i - 1)
+end
 
-sort(collect(eachrow(x1)))
+error_plot = [compute_alignment_error(x, y) for x in sources]
+j_list = collect(0:9)
+Plots.plot(j_list, error_plot, markers=2, xticks=1:10, labels="Error")
+Plots.plot!(Polynomials.fit(j_list, error_plot, 1), extrema(j_list)..., labels="Linear")
+Plots.plot!(Polynomials.fit(j_list, error_plot, 2), extrema(j_list)..., labels="Quadratic")
+Plots.plot!(Polynomials.fit(j_list, error_plot, 3), extrema(j_list)..., labels="Cubic")
+Plots.plot!(Polynomials.fit(j_list, error_plot, 7), extrema(j_list)..., labels="Septic")
 
-x1
+exp_fit = fitexp(j_list, error_plot)
+Plots.plot!(exp_fit.x, exp_fit.y, labels="Exponential")
+title!(L"Error \ Dependency \ on \ Noise")
+xaxis!(L"Noise\ Level")
+yaxis!(L"Alignment\ Error")
 
-scene = Scene()
-Plots.scatter(x1[:, 1], x1[:, 2], x1[:, 3])
-plt = plot3d(
-    1,
-    xlim=(extrema(x1[:, 1])),
-    ylim=(extrema(x1[:, 2])),
-    zlim=(extrema(x1[:, 3])),
-)
-plt = plot3d(
-    1,
-    xlim=(extrema(x[:, 1])),
-    ylim=(extrema(x[:, 2])),
-    zlim=(extrema(x[:, 3])),
-    legend=true,
-    marker=2
-)
-@gif for i = 0:100
-    x_ = xt(i / 100, x)
-    push!(plt, x_[:, 1], x_[:, 2], x_[:, 3])
-end every 1
+error_plot_rev = reverse(error_plot)
+Plots.plot(j_list, error_plot_rev, markers=2, xticks=1:10, labels="Error")
+Plots.plot!(Polynomials.fit(j_list, error_plot_rev, 1), extrema(j_list)..., labels="Linear")
+Plots.plot!(Polynomials.fit(j_list, error_plot_rev, 2), extrema(j_list)..., labels="Quadratic")
+Plots.plot!(Polynomials.fit(j_list, error_plot_rev, 3), extrema(j_list)..., labels="Cubic")
+Plots.plot!(Polynomials.fit(j_list, error_plot_rev, 7), extrema(j_list)..., labels="Septic")
+exp_fit = EasyFit.fitexp(j_list, error_plot_rev)
+Plots.plot!(exp_fit.x, exp_fit.y, labels="Reverse Exponential")
+title!(L"Error \ Dependency \ on \ Subtractive \ Inverse \ of \ Noise")
+xaxis!(L"Subtractive \ Inverse \ Noise\ Level")
+yaxis!(L"Alignment\ Error")
