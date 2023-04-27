@@ -108,9 +108,11 @@ function matrix_j(Q::Matrix{Float64}, i::Int=1)::Union{Matrix{Float64},UniformSc
     end
 end
 
-function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{Float64}
+# REAL instead of float64
+function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{<:Real}
     J = matrix_j(Q, i)
-    return J' * exp(t * log(J * Q))
+    ll = log(J * Q)
+    return J' * exp(t * ll)
 end
 
 xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(3)')
