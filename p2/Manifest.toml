@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "37de630a27c4ce7a729cb71aa618db3993df5a75"
+project_hash = "e7aefce2fad777fe3b51c840874bec15dcb1a7d9"
 
 [[deps.AMD]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays", "Test"]
@@ -814,6 +814,12 @@ git-tree-sha1 = "5d494bc6e85c4c9b626ee0cab05daa4085486ab1"
 uuid = "5ced341a-0733-55b8-9ab6-a4889d929147"
 version = "1.9.3+0"
 
+[[deps.MATLAB]]
+deps = ["Libdl", "SparseArrays"]
+git-tree-sha1 = "e263657fe013cb02450c5d4210d2c50a354a5e08"
+uuid = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+version = "0.8.3"
+
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
 git-tree-sha1 = "2ce8695e1e699b68702c03402672a69f54b8aca9"
@@ -1256,6 +1262,12 @@ git-tree-sha1 = "433f67305c2616abb8ddb354dc28eb4b6373c332"
 uuid = "7fc90fd6-dbef-5a6a-93f8-169f2a2e705b"
 version = "700.300.801+1"
 
+[[deps.SDPT3]]
+deps = ["LinearAlgebra", "MATLAB", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "0484dd8bf028334fb52a898b7713c187c23a1b24"
+uuid = "e33b2407-87ff-50a0-8b27-f0fe7855237d"
+version = "0.0.3"
+
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
@@ -1265,6 +1277,12 @@ deps = ["Dates"]
 git-tree-sha1 = "30449ee12237627992a99d5e30ae63e4d78cd24a"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.2.0"
+
+[[deps.SeDuMi]]
+deps = ["LinearAlgebra", "MATLAB", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "9df1434f4e783148fbe663b0345e772c08f003a2"
+uuid = "a895aaad-f784-5544-9392-bb281339c1b2"
+version = "0.2.2"
 
 [[deps.SemidefiniteModels]]
 deps = ["Compat", "GZip", "MathProgBase"]
