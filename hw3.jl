@@ -25,13 +25,12 @@ sources = files[2:end]
 Process file and return matrix
 """
 function process_file(fn::String)
-    m = readdlm(fn, Float64, header=false)
+    m = copy(transpose(readdlm(fn, Float64, header=false)))
     # n = parse(Int64, nv)
     return m
 end
 
-target = process_file(target)
-sources = process_file.(sources)
+
 
 function compute_center(m::Matrix{Float64})::Vector{Float64}
     n = size(m)[2]
@@ -113,16 +112,17 @@ function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{Float64}
     return J' * exp(t * log(J * Q))
 end
 
-xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(3)')
-xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1) = xt(t, X, tp[1], tp[2], tp[3]; i=i)
-xt(t::Float64, X::Matrix{Float64}; i::Int=1) = xt(t, X, compute_qaz(X, target); i=i)
+xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1, n::Int=40) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(n)')
+xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1, n::Int=40) = xt(t, X, tp[1], tp[2], tp[3]; i=i,n=n)
+xt(t::Float64, X::Matrix{Float64}; i::Int=1, n::Int=40) = xt(t, X, compute_qaz(X, target); i=i,n=n)
 
 function make_gif(x::Matrix{Float64}, s::Int)
     x_min::Matrix{Real} = ones(100, 3)
     x_max::Matrix{Real} = ones(100, 3)
+    n = size(x)[2]
 
     for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y))
+        x_ = xt(i / 100, x, compute_qaz(x, y),n=n)
         for k in 1:3
             x_min[i, k] = minimum(x_[:, k])
             x_max[i, k] = maximum(x_[:, k])
@@ -132,10 +132,13 @@ function make_gif(x::Matrix{Float64}, s::Int)
     low_bounds = minimum.(eachcol(x_min))
 
     @gif for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y))
+        x_ = xt(i / 100, x, compute_qaz(x, y),n=n)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
-        Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
-        Plots.scatter!(y[:, 1], y[:, 2], y[:, 3], markercolor=:red)
+        
+        # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
+        Plots.scatter(x_[ 1,:], x_[2,:], x_[ 3,:], markercolor=:blue)
+        # Plots.scatter!(y[:, 1], y[:, 2], y[:, 3], markercolor=:red)
+        Plots.scatter!(y[1,:], y[2,:], y[3,:], markercolor=:red)
         if s == 0
             title!(L"X(t), t = %$(i/100)" * "\n" * "No Noisy Source")
         else
@@ -143,6 +146,9 @@ function make_gif(x::Matrix{Float64}, s::Int)
         end
     end fps = 10
 end
+
+target = process_file(target)
+sources = process_file.(sources)
 
 y = target
 for (i, x) in enumerate(sources)
