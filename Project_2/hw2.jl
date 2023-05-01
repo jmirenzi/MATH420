@@ -1,6 +1,6 @@
 
-using Pkg
-Pkg.activate("p2")
+# using Pkg
+# Pkg.activate("p2")
 using StatsBase
 # Pkg.instantiate()
 using DelimitedFiles
@@ -8,7 +8,8 @@ using LinearAlgebra
 using Plots
 using LaTeXStrings
 using Convex
-using CSDP
+# using CSDP
+using SDPT3
 using JLD
 using ProgressBars
 using CurveFit
@@ -27,7 +28,7 @@ for name = ("dist", "exactdist")
     v = ((S - rho * I(57)) * one_col) / num_vert
     function getGram(n::Real, S::Matrix, rho::Real)::Matrix
         r = 1 / 2n * (S - rho * I) * one_col * one_col' + 1 / 2n * one_col * one_col' * (S - rho * I) - 1 / 2 * S
-        @assert issymmetric(r)
+        # @assert issymmetric(r)
         return r
     end
     GHW1[name] = getGram(num_vert, S, rho)
@@ -91,20 +92,84 @@ G_est = {
 G_est[0.1][noisy10]
 """
 
+using MATLAB
+# cd("/home/camilovelezr/cvx/") do
+#     MATLAB.mat"cvx_setup"
+# end
+cd("/home/camilovelezr/cvx/sdpt3/") do
+    MATLAB.mat"install_sdpt3"
+end
+# MATLAB.mat" cvx start SDP $()"
 
-for f in vcat(true_files, noisy_files)
+GG = []
+
+for f in ProgressBar(vcat(true_files, noisy_files)[1:1])
     d, k1 = process_file(f)
-    for er1 in [0.1, 1]
+    for er1 in [0.1]
         G = Semidefinite(57)
         problem = minimize(tr(G))
         c1 = [abs(tr(evector(57, i[1], i[2])' * G * evector(57, i[1], i[2])) - (d[i[1], i[2]])) ≤ er1 for i in k1]
         problem.constraints += c1
 
-        solve!(problem, CSDP.Optimizer, warmstart=true)
+        solve!(problem, SDPT3.Optimizer)
+        push!(GG, G)
         G_est[er1][f] = G.value
     end
 end
-# @save "./G_est_dict" G_est
+d1, k1 = process_file(noisy_files[10])
+G1 = Semidefinite(57)
+problem = minimize(tr(G1))
+c1 = [abs(tr(evector(57, i[1], i[2])' * G1 * evector(57, i[1], i[2])) - (d1[i[1], i[2]])) ≤ 1 for i in k1]
+problem.constraints += c1
+
+solve!(problem, SDPT3.Optimizer)
+
+k1
+d1, k1 = process_file(noisy_files[10])
+evectors = [evector(57, i[1], i[2]) for i in k1]
+# evectors = hcat(evectors)
+evectors = mapreduce(permutedims, vcat, evectors)
+
+dnums = [d1[x[1], x[2]] for x in k1]
+dnums = hcat(dnums)
+
+# MATLAB.mat"n=57;
+#        cvx_begin sdp
+#            variable X(n,n) semidefinite;
+#            minimize trace(X)
+#            subject to
+#              X*ones(n,1) == zeros(n,1);
+#              for i=1:$(length(k1))
+#                 k_ = $(k1)(i)
+#                 disp(k_)
+#                 ev = $(evectors)(i)
+#                 abs(trace(transpose(ev)*X*ev) - $(d1)(k_(1), k_(2))) <= 0.1
+#              end
+#        cvx_end
+#        $Xm = X
+#        "
+
+# dnums = [d1[x[1], x[2]] for x in k1]
+
+mat"n=57; ev = $(evectors); disp(ev(1,54))"
+
+MATLAB.mat"n=57;
+       cvx_begin sdp
+           variable X(n,n) semidefinite;
+           minimize trace(X)
+           subject to
+             X*ones(n,1) == zeros(n,1);
+             for i=1:$(length(k1))
+                ev = double($(evectors)(i,:))
+                abs(trace(ev*X*transpose(ev)) - $(dnums)(i)) <= 1
+             end
+       cvx_end
+       $(Xm) = X
+       "
+
+
+@save "./G_MATLAB_TEST" G_est
+
 # G_est = load("./G_est_dict")["G_est"]
 
 Error::Dict{Real,Vector} = Dict([0.1 => ones(10), 1 => ones(10)])
@@ -140,4 +205,19 @@ end
 
 
 G_est[1.0][files[end]]
+
+MATLAB.mat"m=20; n=10;
+       E1 = randn(n,n); d1 = randn(n,1);
+       E2 = randn(n,n); d2 = randn(n,1);
+       epsx = 1e-1;
+       cvx_begin sdp
+           variable X(n,n) semidefinite;
+           minimize trace(X)
+           subject to
+             X*ones(n,1) == zeros(n,1);
+             abs(trace(E1*X)-d1)<=epsx;
+             abs(trace(E2*X)-d2)<=epsx;
+       cvx_end
+       $Xm = X
+       "
 
