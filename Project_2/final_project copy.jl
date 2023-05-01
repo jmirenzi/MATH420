@@ -132,8 +132,6 @@ xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Flo
 xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1, n::Int=40) = xt(t, X, tp[1], tp[2], tp[3]; i=i , n=n)
 xt(t::Float64, X::Matrix{Float64}; i::Int=1, n::Int=40) = xt(t, X, compute_qaz(X, target); i=i, n=n)
 
-x=Y[1]
-y=target_data
 
 function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
     x_min::Matrix{Real} = ones(100, 3)
@@ -149,7 +147,7 @@ function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
     up_bounds = maximum.(eachcol(x_max))
     low_bounds = minimum.(eachcol(x_min))
 
-    @gif for i in 1:100
+    @gif for i in 1:120
         x_ = xt((i > 100 ? 100 : i) / 100, x, compute_qaz(x, y),n=n)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
@@ -172,7 +170,7 @@ function Laplacian_eig_map(square_distance_matrix::Matrix)::Matrix
     α = .000001
     n = size(square_distance_matrix)[1]
     W = zeros(size(square_distance_matrix)[1],size(square_distance_matrix)[2])
-    for i=1:n, j=1:n
+    for i=1:n, j=i:n
         # global W
         if square_distance_matrix[i,j] !=0
             W[i,j] = exp(-α*square_distance_matrix[i,j])
@@ -185,16 +183,12 @@ function Laplacian_eig_map(square_distance_matrix::Matrix)::Matrix
         D[k,k] = sum(W[k,:])
     end
     D_root = D^(-1/2)
-    D_root[40,40] = 1
+    # D_root[40,40] = 1
     laplacian_ = I(n) - D_root * W * D_root
     e_vec = eigvecs(laplacian_)
     return e_vec[2:4,:]*D_root
 end
 
-
-function my_scatter3d(x_)
-    Plots.scatter(x_[1,:], x_[2,:], x_[3,:])
-end
 
 files = readdir("Project_2/data/");
 files = joinpath.("Project_2/data/", files);

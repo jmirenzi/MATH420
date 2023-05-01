@@ -17,9 +17,9 @@ using Plots
 #     MATLAB.mat"install_sdpt3"
 # end
 
-function create_square_dist_matrix(R::Matrix{<:Real})::Tuple{Matrix{<:Real},Any}
+function create_square_dist_matrix(R::Matrix{<:Real},n::Int)::Tuple{Matrix{<:Real},Any}
     dict1 = Dict(eachrow(R[:, 1:2]) .=> R[:, 3])
-    matrixR = zeros(Float64, 57, 57)
+    matrixR = zeros(Float64, n, n)
     for x in dict1
         i = trunc.(Int, x[1])
         matrixR[i[1], i[2]] = x[2]
@@ -102,6 +102,7 @@ function compute_alignment_error(x::Matrix{Float64}, y::Matrix{Float64})::Float6
     return compute_alignment_error(x, y, Q, a, z)
 end;
 
+
 zt(t::Float64, z::Vector{Float64})::Vector{Float64} = t * z
 at(t::Float64, a::Float64)::Float64 = 1 - t + t * a
 
@@ -122,16 +123,22 @@ function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{Float64}
     return J' * exp(t * log(J * Q))
 end
 
-xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(3)')
-xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1) = xt(t, X, tp[1], tp[2], tp[3]; i=i)
-xt(t::Float64, X::Matrix{Float64}; i::Int=1) = xt(t, X, compute_qaz(X, target); i=i)
+function align_data(X::Matrix,Y::Matrix)
+    (Q, a, z) = compute_qaz(X,Y)
+    return a * Q * (X - z * ones(40)')
+end
+
+xt(t::Float64, X::Matrix{Float64}, Q::Matrix{Float64}, a::Float64, z::Vector{Float64}; i::Int=1, n::Int=40) = at(t, a) * qt(t, Q, i) * (X - zt(t, z) * ones(n)')
+xt(t::Float64, X::Matrix{Float64}, tp::Tuple; i::Int=1, n::Int=40) = xt(t, X, tp[1], tp[2], tp[3]; i=i , n=n)
+xt(t::Float64, X::Matrix{Float64}; i::Int=1, n::Int=40) = xt(t, X, compute_qaz(X, target); i=i, n=n)
+
 
 function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
     x_min::Matrix{Real} = ones(100, 3)
     x_max::Matrix{Real} = ones(100, 3)
-
+    n = size(x)[2]
     for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y))
+        x_ = xt(i / 100, x, compute_qaz(x, y),n=n)
         for k in 1:3
             x_min[i, k] = minimum(x_[:, k])
             x_max[i, k] = maximum(x_[:, k])
@@ -140,14 +147,48 @@ function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
     up_bounds = maximum.(eachcol(x_max))
     low_bounds = minimum.(eachcol(x_min))
 
-    @gif for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y))
+    @gif for i in 1:120
+        x_ = xt((i > 100 ? 100 : i) / 100, x, compute_qaz(x, y),n=n)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
-        Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
-        Plots.scatter!(y[:, 1], y[:, 2], y[:, 3], markercolor=:red)
+        # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
+        # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], markercolor=:blue)
+        Plots.scatter(x_[ 1,:], x_[2,:], x_[ 3,:], markercolor=:blue)
+        # Plots.scatter(y[:, 1], y[:, 2], y[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
+        # Plots.scatter!(y[:, 1], y[:, 2], y[:, 3], markercolor=:red)
+        Plots.scatter!(y[1,:], y[2,:], y[3,:], markercolor=:red)
         title!(title_string)
     end fps = 10
 end
+
+# observed_ = observed[1];
+# (R, (nv, m)) = readdlm(observed_, Float64, header=true);
+# square_distance_matrix, k__ = create_square_dist_matrix(R,40);
+
+
+# add the dist for both sides of the matrix
+function Laplacian_eig_map(square_distance_matrix::Matrix)::Matrix
+    α = .000001
+    n = size(square_distance_matrix)[1]
+    W = zeros(size(square_distance_matrix)[1],size(square_distance_matrix)[2])
+    for i=1:n, j=i:n
+        # global W
+        if square_distance_matrix[i,j] !=0
+            W[i,j] = exp(-α*square_distance_matrix[i,j])
+            W[j,i] = exp(-α*square_distance_matrix[i,j])
+        #    println(W[i,j]) 
+        end
+    end
+    D = zeros(n,n)
+    for k=1:n
+        D[k,k] = sum(W[k,:])
+    end
+    D_root = D^(-1/2)
+    # D_root[40,40] = 1
+    laplacian_ = I(n) - D_root * W * D_root
+    e_vec = eigvecs(laplacian_)
+    return e_vec[2:4,:]*D_root
+end
+
 
 files = readdir("Project_2/data/");
 files = joinpath.("Project_2/data/", files);
@@ -156,8 +197,10 @@ observed=files[1:3];
 target=files[4:6];
 epsilon_list = [1,1,1];
 G::Dict{Int,Matrix} = Dict([]);
-confusion_matrix = ones(3,3);
+Y::Dict{Int,Matrix} = Dict([]);
+Y_al::Dict{Int,Matrix} = Dict([]);
 
+confusion_matrix = ones(3,3);
 matching_target=0; # fix
 # Start of Loop
 for iter in 1:3
@@ -166,48 +209,56 @@ for iter in 1:3
     observed_ = observed[iter];
 
     (R, (nv, m)) = readdlm(observed_, Float64, header=true);
-    D, k = create_square_dist_matrix(R);
+    
     nv = parse(Int,nv);
     m = parse(Int,m);
-    # if m >= nv*(nv-1)/2 # Full data
-    #     println("Full data was given?!?");
+    D, k = create_square_dist_matrix(R,nv);
+    SDP_bool = false
+    if SDP_bool     
+        # if m >= nv*(nv-1)/2 # Full data
+        #     println("Full data was given?!?");
 
-    # else
-        error = epsilon_list[iter];
-        G_ = Semidefinite(nv);
-        problem = minimize(tr(G_));
-        problem.constraints += [abs(tr(evector(nv, i[1], i[2])' * G_ * evector(nv, i[1], i[2])) - (D[i[1], i[2]])) ≤ error for i in k];
+        # else
+            error = epsilon_list[iter];
+            G_ = Semidefinite(nv);
+            problem = minimize(tr(G_));
+            problem.constraints += [abs(tr(evector(nv, i[1], i[2])' * G_ * evector(nv, i[1], i[2])) - (D[i[1], i[2]])) ≤ error for i in k];
 
-        solve!(problem, CSDP.Optimizer)
-        # solve!(problem, SCS.Optimizer)
-        
-        # SDPASolver(Mode=PARAMETER_UNSTABLE_BUT_FAST);
-        # solve!(problem, SDPA.Optimizer)
-        # solve!(problem, SDPT3.Optimizer)
-        # solve!(problem, SDPAFamily.Optimizer(presolve=false))
-        G[iter] = G_.value;
-        # print(G[iter])
-    # end
-    ev, Q = eigen(G[iter], sortby=x -> -x);
-    Λ = Diagonal(ev);
-    Q_1 = Q[:, 1:3];
-    Λ_1 = Λ[1:3, 1:3];
-    Y = copy(transpose(Λ_1^1 / 2 * Q_1'));
+            solve!(problem, CSDP.Optimizer)
+            # solve!(problem, SCS.Optimizer)
+            
+            # SDPASolver(Mode=PARAMETER_UNSTABLE_BUT_FAST);
+            # solve!(problem, SDPA.Optimizer)
+            # solve!(problem, SDPT3.Optimizer)
+            # solve!(problem, SDPAFamily.Optimizer(presolve=false))
+            G[iter] = G_.value;
+            # print(G[iter])
+        # end
+        ev, Q = eigen(G[iter], sortby=x -> -x);
+        Λ = Diagonal(ev);
+        Q_1 = Q[:, 1:3];
+        Λ_1 = Λ[1:3, 1:3];
+        Y[iter] = copy(transpose(Λ_1^1 / 2 * Q_1'));
+    else
+        # Y[iter] = copy(transpose(Laplacian_eig_map(D)));
+        Y[iter] = Laplacian_eig_map(D);
+    end
     min_error=0;
     for iter_2 = 1:3
+    # iter_2 = 1
         global matching_target
         target_ = target[iter_2];
-        target_data = readdlm(target_, Float64, header=false);
-        align_error = compute_alignment_error(Y, target_data);
+        target_data = copy(transpose(readdlm(target_, Float64, header=false)));
+        align_error = compute_alignment_error(Y[iter], target_data);
         confusion_matrix[iter,iter_2] = align_error;
         if align_error<min_error || min_error==0
             min_error=align_error;
             matching_target = iter_2;
         end
     end
-    make_gif(Y,readdlm(target[matching_target],Float64,header=false),"Observed $(iter) to Target $(matching_target)")
+    make_gif(Y[iter],copy(transpose(readdlm(target[matching_target]))),"Observed $(iter) to Target $(matching_target)")
 end
 
-confusion_matrix
+println(confusion_matrix)
 
 
