@@ -111,7 +111,7 @@ function matrix_j(Q::Matrix{Float64}, i::Int=1)::Union{Matrix{Float64},UniformSc
     end
 end
 
-function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{Float64}
+function qt(t::Float64, Q::Matrix{Float64}, i::Int=1)::Matrix{<:Real}
     J = matrix_j(Q, i)
     return J' * exp(t * log(J * Q))
 end
@@ -189,7 +189,6 @@ files = joinpath.("Project_2/data/", files);
 observed = files[1:3];
 target = files[4:6];
 epsilon_list = [1, 1, 1];
-G::Dict{Int,Matrix} = Dict([]);
 Y::Dict{Int,Matrix} = Dict([]);
 Y_al::Dict{Int,Matrix} = Dict([]);
 

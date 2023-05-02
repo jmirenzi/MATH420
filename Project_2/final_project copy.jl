@@ -213,10 +213,8 @@ for iter in ProgressBar(1:2)
     (R, (nv, m)) = readdlm(observed_, Float64, header=true)
 
     nv = parse(Int, nv)
-    @show nv
     m = parse(Int, m)
     D, k = create_square_dist_matrix(R, nv)
-    @show size(D)
     SDP_bool = true
     try
         if SDP_bool
@@ -266,10 +264,16 @@ for iter in ProgressBar(1:2)
         make_gif(Y[iter], copy(transpose(readdlm(target[matching_target]))), "Observed $(iter) to Target $(matching_target)")
     end
 end
+(R, (nv, m)) = readdlm(observed[1], Float64, header=true)
+target_data = copy(transpose(readdlm(target[1], Float64, header=false)))
+nv = parse(Int, nv)
+m = parse(Int, m)
+D, k = create_square_dist_matrix(R, nv)
 evectors = [evector(nv, i[1], i[2]) for i in k]
 evectors = mapreduce(permutedims, vcat, evectors)
 dnums = [D[x[1], x[2]] for x in k]
-ep = 30
+maximum(dnums) / 100
+ep = 20
 MATLAB.mat"n=40;
     cvx_begin sdp
         variable X(n,n) semidefinite;
@@ -278,7 +282,7 @@ MATLAB.mat"n=40;
             X*ones(n,1) == zeros(n,1);
             for i=1:$(length(k))
                 ev = double($(evectors)(i,:));
-                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 30
+                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 689188
             end
     cvx_end
     $(G) = X
