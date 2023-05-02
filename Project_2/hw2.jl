@@ -103,33 +103,34 @@ end
 
 GG = []
 
-for f in ProgressBar(vcat(true_files, noisy_files)[1:1])
-    d, k1 = process_file(f)
-    for er1 in [0.1]
-        G = Semidefinite(57)
-        problem = minimize(tr(G))
-        c1 = [abs(tr(evector(57, i[1], i[2])' * G * evector(57, i[1], i[2])) - (d[i[1], i[2]])) ≤ er1 for i in k1]
-        problem.constraints += c1
+# for f in ProgressBar(vcat(true_files, noisy_files)[1:1])
+#     d, k1 = process_file(f)
+#     for er1 in [0.1]
+#         G = Semidefinite(57)
+#         problem = minimize(tr(G))
+#         c1 = [abs(tr(evector(57, i[1], i[2])' * G * evector(57, i[1], i[2])) - (d[i[1], i[2]])) ≤ er1 for i in k1]
+#         problem.constraints += c1
 
-        solve!(problem, SDPT3.Optimizer)
-        push!(GG, G)
-        G_est[er1][f] = G.value
-    end
-end
+#         solve!(problem, SDPT3.Optimizer)
+#         push!(GG, G)
+#         G_est[er1][f] = G.value
+#     end
+# end
 d1, k1 = process_file(noisy_files[10])
-G1 = Semidefinite(57)
-problem = minimize(tr(G1))
-c1 = [abs(tr(evector(57, i[1], i[2])' * G1 * evector(57, i[1], i[2])) - (d1[i[1], i[2]])) ≤ 1 for i in k1]
-problem.constraints += c1
+# G1 = Semidefinite(57)
+# problem = minimize(tr(G1))
+# c1 = [abs(tr(evector(57, i[1], i[2])' * G1 * evector(57, i[1], i[2])) - (d1[i[1], i[2]])) ≤ 1 for i in k1]
+# problem.constraints += c1
 
-solve!(problem, SDPT3.Optimizer)
+# solve!(problem, SDPT3.Optimizer)
 
 k1
-d1, k1 = process_file(noisy_files[10])
+d1, k1 = process_file(true_files[10])
 evectors = [evector(57, i[1], i[2]) for i in k1]
 # evectors = hcat(evectors)
 evectors = mapreduce(permutedims, vcat, evectors)
 
+k1
 dnums = [d1[x[1], x[2]] for x in k1]
 dnums = hcat(dnums)
 
@@ -151,7 +152,10 @@ dnums = hcat(dnums)
 
 # dnums = [d1[x[1], x[2]] for x in k1]
 
-mat"n=57; ev = $(evectors); disp(ev(1,54))"
+ep = 0.1
+ep = 30
+# ep = maximum(dnums)/100
+# mat"n=57; ev = $(evectors); disp(ev(1,54))"
 
 MATLAB.mat"n=57;
        cvx_begin sdp
@@ -160,13 +164,15 @@ MATLAB.mat"n=57;
            subject to
              X*ones(n,1) == zeros(n,1);
              for i=1:$(length(k1))
-                ev = double($(evectors)(i,:))
-                abs(trace(ev*X*transpose(ev)) - $(dnums)(i)) <= 1
+                ev = double($(evectors)(i,:));
+                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 30
              end
        cvx_end
        $(Xm) = X
        "
 
+#TODO work on epsilon noisy, true
+# larger for noisy
 
 @save "./G_MATLAB_TEST" G_est
 
