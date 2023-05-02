@@ -2,14 +2,7 @@ using Pkg
 Pkg.activate("p2")
 using DelimitedFiles
 using LinearAlgebra
-using Convex
-using CSDP
-using SCS
-using SDPA
-using SDPAFamily
-using JuMP
 using Plots
-include("./hw3.jl")
 # using MATLAB    
 # using SDPT3 
 
