@@ -3,8 +3,7 @@ Pkg.activate("p2")
 using DelimitedFiles
 using LinearAlgebra
 using Plots
-# using MATLAB    
-# using SDPT3 
+using MATLAB
 
 
 # cd("C:/Users/jmire/Downloads/cvx-w64/cvx/sdpt3/") do 
