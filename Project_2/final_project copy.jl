@@ -107,8 +107,7 @@ end;
 
 
 zt(t::Float64, z::Vector{Float64})::Vector{Float64} = t * z
-at(t::Float64, a::Float64)::Float64 = 1 - t + t * a
-
+at(t::Float64, a::Float64)::Float64 = t * (a - 0.005) + 0.005
 function matrix_j(Q::Matrix{Float64}, i::Int=1)::Union{Matrix{Float64},UniformScaling{Bool}}
     d = round(det(Q))
     d == 1 && return I
@@ -141,16 +140,16 @@ function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
     x_max::Matrix{Real} = ones(100, 3)
     n = size(x)[2]
     for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y), n=n)
+        x_ = xt(i / 100, x, compute_qaz(x, y); n=n)
         for k in 1:3
-            x_min[i, k] = minimum(x_[:, k])
-            x_max[i, k] = maximum(x_[:, k])
+            x_min[k, i] = minimum(x_[k, :])
+            x_max[k, i] = maximum(x_[k, :])
         end
     end
     up_bounds = maximum.(eachcol(x_max))
     low_bounds = minimum.(eachcol(x_min))
 
-    @gif for i in 1:120
+    @gif for i in 1:100
         x_ = xt((i > 100 ? 100 : i) / 100, x, compute_qaz(x, y), n=n)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(extrema(x_[:, 1])), ylims=(extrema(x_[:, 2])), zlims=(extrema(x_[:, 3])), markercolor=:blue)
         # Plots.scatter(x_[:, 1], x_[:, 2], x_[:, 3], xlims=(low_bounds[1], up_bounds[1]), ylims=(low_bounds[2], up_bounds[2]), zlims=(low_bounds[3], up_bounds[3]), markercolor=:blue)
@@ -264,7 +263,7 @@ for iter in ProgressBar(1:2)
         make_gif(Y[iter], copy(transpose(readdlm(target[matching_target]))), "Observed $(iter) to Target $(matching_target)")
     end
 end
-(R, (nv, m)) = readdlm(observed[1], Float64, header=true)
+(R, (nv, m)) = readdlm(observed[2], Float64, header=true)
 target_data = copy(transpose(readdlm(target[1], Float64, header=false)))
 nv = parse(Int, nv)
 m = parse(Int, m)
@@ -274,6 +273,8 @@ evectors = mapreduce(permutedims, vcat, evectors)
 dnums = [D[x[1], x[2]] for x in k]
 maximum(dnums) / 100
 ep = 20
+put_variable()
+
 MATLAB.mat"n=40;
     cvx_begin sdp
         variable X(n,n) semidefinite;
@@ -282,12 +283,22 @@ MATLAB.mat"n=40;
             X*ones(n,1) == zeros(n,1);
             for i=1:$(length(k))
                 ev = double($(evectors)(i,:));
-                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 689188
+                abs(ev*X*transpose(ev) - $(dnums)(i)) <= ep
             end
     cvx_end
     $(G) = X
     "
+s = -2
 
+# obs 1 ep ==28
+ev, Q = eigen(G, sortby=x -> -x)
+Λ = Diagonal(ev)
+Q_1 = Q[:, 1:3]
+Λ_1 = Λ[1:3, 1:3]
+Y_ = (Λ_1^1 / 2 * Q_1')
+align_error = compute_alignment_error(Y_, target_data)
+make_gif(Y_, target_data, "test")
+# 689188 : 6848
 println(confusion_matrix)
 
 

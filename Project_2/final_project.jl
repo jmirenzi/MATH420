@@ -4,11 +4,15 @@ using DelimitedFiles
 using LinearAlgebra
 using Plots
 using MATLAB
+using ProgressBars
 
 
 # cd("C:/Users/jmire/Downloads/cvx-w64/cvx/sdpt3/") do 
 #     MATLAB.mat"install_sdpt3"
 # end
+cd("/home/camilovelezr/cvx/sdpt3/") do
+    MATLAB.mat"install_sdpt3"
+end
 
 function create_square_dist_matrix(R::Matrix{<:Real}, n::Int)::Tuple{Matrix{<:Real},Any}
     dict1 = Dict(eachrow(R[:, 1:2]) .=> R[:, 3])
@@ -97,7 +101,7 @@ end;
 
 
 zt(t::Float64, z::Vector{Float64})::Vector{Float64} = t * z
-at(t::Float64, a::Float64)::Float64 = 1 - t + t * a
+at(t::Float64, a::Float64)::Float64 = t * (a - 0.005) + 0.005
 
 function matrix_j(Q::Matrix{Float64}, i::Int=1)::Union{Matrix{Float64},UniformScaling{Bool}}
     d = round(det(Q))
@@ -127,14 +131,14 @@ xt(t::Float64, X::Matrix{Float64}; i::Int=1, n::Int=40) = xt(t, X, compute_qaz(X
 
 
 function make_gif(x::Matrix{Float64}, y::Matrix{Float64}, title_string::String)
-    x_min::Matrix{Real} = ones(100, 3)
-    x_max::Matrix{Real} = ones(100, 3)
+    x_min::Matrix{Real} = ones(3, 100)
+    x_max::Matrix{Real} = ones(3, 100)
     n = size(x)[2]
     for i in 1:100
-        x_ = xt(i / 100, x, compute_qaz(x, y), n=n)
+        x_ = xt(i / 100, x, compute_qaz(x, y); n=n)
         for k in 1:3
-            x_min[i, k] = minimum(x_[:, k])
-            x_max[i, k] = maximum(x_[:, k])
+            x_min[k, i] = minimum(x_[k, :])
+            x_max[k, i] = maximum(x_[k, :])
         end
     end
     up_bounds = maximum.(eachcol(x_max))
@@ -195,7 +199,7 @@ Y_al::Dict{Int,Matrix} = Dict([]);
 confusion_matrix = ones(3, 3);
 matching_target = 0; # fix
 # Start of Loop
-for iter in 1:3
+for iter in ProgressBar(1:3)
     # iter = 1
     global confusion_matrix
     observed_ = observed[iter]
@@ -211,20 +215,38 @@ for iter in 1:3
             evectors = [evector(nv, i[1], i[2]) for i in k]
             evectors = mapreduce(permutedims, vcat, evectors)
             dnums = [D[x[1], x[2]] for x in k]
-            ep = 30
-            MATLAB.mat"n=40;
-                cvx_begin sdp
-                    variable X(n,n) semidefinite;
-                    minimize trace(X)
-                    subject to
-                        X*ones(n,1) == zeros(n,1);
-                        for i=1:$(length(k))
-                            ev = double($(evectors)(i,:));
-                            abs(ev*X*transpose(ev) - $(dnums)(i)) <= 30
-                        end
-                cvx_end
-                $(G) = X
-                "
+            if iter < 3
+                MATLAB.mat"n=40;
+                    cvx_begin sdp
+                        variable X(n,n) semidefinite;
+                        minimize trace(X)
+                        subject to
+                            X*ones(n,1) == zeros(n,1);
+                            for i=1:$(length(k))
+                                ev = double($(evectors)(i,:));
+                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 30
+                            end
+                    cvx_end
+                    $(G) = X
+                    "
+                @assert true # ignore, just formatting
+            else
+                MATLAB.mat"n=40;
+                    cvx_begin sdp
+                        variable X(n,n) semidefinite;
+                        minimize trace(X)
+                        subject to
+                            X*ones(n,1) == zeros(n,1);
+                            for i=1:$(length(k))
+                                ev = double($(evectors)(i,:));
+                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 40
+                            end
+                    cvx_end
+                    $(G) = X
+                    "
+                @assert true # ignore, just formatting
+            end
+
             error = epsilon_list[iter]
             ev, Q = eigen(G, sortby=x -> -x)
             Λ = Diagonal(ev)
