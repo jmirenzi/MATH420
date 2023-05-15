@@ -217,7 +217,7 @@ for iter in ProgressBar(1:3)
             evectors = [evector(nv, i[1], i[2]) for i in k]
             evectors = mapreduce(permutedims, vcat, evectors)
             dnums = [D[x[1], x[2]] for x in k]
-            if iter < 3
+            if iter == 1
                 MATLAB.mat"n=40;
                     cvx_begin sdp
                         variable X(n,n) semidefinite;
@@ -226,7 +226,24 @@ for iter in ProgressBar(1:3)
                             X*ones(n,1) == zeros(n,1);
                             for i=1:$(length(k))
                                 ev = double($(evectors)(i,:));
-                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 30
+                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 18
+                            end
+                    cvx_end
+                    $(G) = X
+                    "
+                push!(GS, G)
+                @assert true # ignore, just formatting
+
+            elseif iter == 2
+                MATLAB.mat"n=40;
+                    cvx_begin sdp
+                        variable X(n,n) semidefinite;
+                        minimize trace(X)
+                        subject to
+                            X*ones(n,1) == zeros(n,1);
+                            for i=1:$(length(k))
+                                ev = double($(evectors)(i,:));
+                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 20
                             end
                     cvx_end
                     $(G) = X
@@ -242,7 +259,7 @@ for iter in ProgressBar(1:3)
                             X*ones(n,1) == zeros(n,1);
                             for i=1:$(length(k))
                                 ev = double($(evectors)(i,:));
-                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 40
+                                abs(ev*X*transpose(ev) - $(dnums)(i)) <= 38
                             end
                     cvx_end
                     $(G) = X
@@ -282,11 +299,11 @@ for iter in ProgressBar(1:3)
 end
 
 function ploteigen(i::Int)
-    display(plot(eigen(GS[i]).values[1:end-2], seriestype=:scatter, ms=2, labels=nothing, title=L"\text{First 38 Eigenvalues of} G_%$(i)$"))
-    display(plot(eigen(GS[i]).values[end-1:end], seriestype=:scatter, ms=2, labels=nothing, title=L"\text{Last 2 Eigenvalues of} G_%$(i)$"))
+    display(plot(eigen(GS[i]).values[1:end-2], seriestype=:scatter, ms=2, labels=nothing, title=L"First 38 Eigenvalues of $G_%$(i)$"))
+    display(plot(eigen(GS[i]).values[end-1:end], seriestype=:scatter, ms=2, labels=nothing, title=L"Last 2 Eigenvalues of $G_%$(i)$"))
 end
 
-ploteigen(1)
+ploteigen(3)
 
 println(confusion_matrix)
 
