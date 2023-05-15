@@ -3,6 +3,7 @@ Pkg.activate("p2")
 using DelimitedFiles
 using LinearAlgebra
 using Plots
+using LaTeXStrings
 using MATLAB
 using ProgressBars
 
@@ -199,6 +200,7 @@ Y_al::Dict{Int,Matrix} = Dict([]);
 confusion_matrix = ones(3, 3);
 matching_target = 0; # fix
 # Start of Loop
+GS = []
 for iter in ProgressBar(1:3)
     # iter = 1
     global confusion_matrix
@@ -229,6 +231,7 @@ for iter in ProgressBar(1:3)
                     cvx_end
                     $(G) = X
                     "
+                push!(GS, G)
                 @assert true # ignore, just formatting
             else
                 MATLAB.mat"n=40;
@@ -244,6 +247,7 @@ for iter in ProgressBar(1:3)
                     cvx_end
                     $(G) = X
                     "
+                push!(GS, G)
                 @assert true # ignore, just formatting
             end
 
@@ -276,6 +280,13 @@ for iter in ProgressBar(1:3)
         make_gif(Y[iter], copy(transpose(readdlm(target[matching_target]))), "Observed $(iter) to Target $(matching_target)")
     end
 end
+
+function ploteigen(i::Int)
+    display(plot(eigen(GS[i]).values[1:end-2], seriestype=:scatter, ms=2, labels=nothing, title=L"\text{First 38 Eigenvalues of} G_%$(i)$"))
+    display(plot(eigen(GS[i]).values[end-1:end], seriestype=:scatter, ms=2, labels=nothing, title=L"\text{Last 2 Eigenvalues of} G_%$(i)$"))
+end
+
+ploteigen(1)
 
 println(confusion_matrix)
 
